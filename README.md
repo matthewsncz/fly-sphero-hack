@@ -1,8 +1,9 @@
 # fly-sphero-hack: status board
 
-A simulated fruit fly brain is the brain and a Sphero BOLT robot ball is its body. People
-talk to it through the laptop; their voice drives the fly's real sense neurons, the fly's
-wiring decides, and the ball moves and lights up its 8x8 LED screen.
+Real sense → descending-neuron pathways, extracted from the fruit fly connectome with the
+organizers' Colab notebook, drive a Sphero BOLT robot ball. The laptop shows the pathway
+lighting up, cutting a neuron in the data changes how the robot behaves, and people can
+talk to it to pick which sense gets stimulated.
 
 Repo: https://github.com/matthewsncz/fly-sphero-hack. To join: `git clone` it, then `uv sync`.
 
@@ -21,25 +22,31 @@ Update it whenever something gets built, decided, or blocked.
   cost a teammate two hours for decoration. The BOLT's LED screen is the "face" instead.
 - Nov 14: the AI only listens (speech → sense inputs) and narrates (what fired). The fly's
   wiring picks every movement and light. See the mission check in CLAUDE.md.
+- Nov 14: the extracted pathways are the core of the project, not a black box behind the
+  ball. Pathway diagram and lesion mode cover the prize's "Data-Driven Insights" and
+  "Rapid Prototyping" bullets; voice is now the input picker.
 
 ## Build order (stop wherever the clock runs out)
 
-1. **Brain moves the ball:** load the connectome, stimulate sugar-taste neurons, read the
-   descending neurons, drive the sim, then the real BOLT. Without this there is no project.
-2. **LED screen shows the brain:** activity bars or the chosen direction, plus a word picked
-   by what fired.
-3. **Laptop mic drives the senses:** loudness and pitch → hearing neurons; keywords like
-   "food" → taste, "danger" → looming vision.
-4. **Narrator:** one spoken sentence about which neurons fired and what the fly did.
+1. **Notebook → pathway → sim ball.** Open the organizers' notebook first and see what it
+   exports. Export one pathway (sugar or sound → descending neurons), run
+   `list_pathways.py`, and drive the sim ball with it. Without this there is no project.
+2. **Pathway diagram + lesion mode.** The live circuit on screen and click-to-cut. This is
+   the "insights" pitch, not an extra.
+3. **Real BOLT + LED screen.** Swap the sim for the ball; the screen shows the brain's choice
+   (arrow, activity, or a word picked by what fired).
+4. **Mic picks the sense.** "food" → taste, loud noise → hearing/escape, "danger" → looming.
+5. **Narrator.** One spoken sentence about which neurons fired and what the fly did.
 
 ## Today's plan
 
 | Time | Who | What |
 |---|---|---|
-| 9:00–noon | everyone | build steps 1–2 in the sim; `test_bolt.py` and `test_matrix.py` ready |
+| 10:30–11:00 | everyone | open the notebook; decide which pathways to export |
+| 11:00–noon | everyone | steps 1–2 in the sim; `test_bolt.py` and `test_matrix.py` ready |
 | noon | NCSU-ID teammate | pick up a BOLT at Ask Us (Hunt opens noon; Hill: call 919-515-3364) |
 | ~12:15 | anyone | `test_bolt.py` then `test_matrix.py` on the real ball |
-| 12:30–2:00 | everyone | steps 3–4, swap the sim for the real ball |
+| 12:30–2:00 | everyone | steps 3–5 |
 | by 2:15 | everyone | submit; `pages/sim_page.py` is the backup demo |
 
 ## Library facts (checked Nov 14)
@@ -56,23 +63,28 @@ Update it whenever something gets built, decided, or blocked.
   bleak, pygame. All import; spherov2's BOLT class loads. (manifold3d and trimesh are
   installed from the collar plan and now unused.)
 - [ ] `data/`: connectome_loader, run_logger
-- [ ] `components/`: body_interface, bolt_body, sim_body, neuron_groups, brain_model,
-  motor_map, matrix_display, mic_listener, sense_encoder, narrator
+- [ ] `components/`: body_interface, bolt_body, sim_body, neuron_groups, pathway_finder,
+  lesion, pathway_view, brain_model, motor_map, matrix_display, mic_listener,
+  sense_encoder, narrator
 - [ ] `pages/`: sim_page (backup demo), bolt_page (real ball)
-- [ ] `scripts/`: test_bolt, test_matrix, test_mic
+- [ ] `scripts/`: test_bolt, test_matrix, test_mic, list_pathways
 - [ ] `tests/`
 
 ## Open problems
 
-1. Whether the organizers' notebook data is FlyWire, what format it exports, and whether it
-   labels sense and descending neurons.
-2. Whether a connectome-only model gives a clear left/right signal. Try sugar → feeding first
-   (a 2024 whole-brain model predicted that pathway); steering from vision is harder.
-3. Whether spherov2 can send heading/speed fast enough over this laptop's Bluetooth.
-4. Whether a team member has an NC State ID (needed to borrow the BOLT).
-5. Mic and speech: which packages (live mic, speech-to-text, laptop voice). Not chosen,
+1. **Check first:** what the organizers' notebook exports. Full connectome, or only query
+   helpers that need an online account or token? Is it FlyWire? Does it label cell types,
+   sense neurons, descending neurons, and hemisphere? The whole plan depends on this.
+2. Whether the pathways are strong enough. Some senses may barely reach steering neurons
+   within a few hops. Try several, keep the clearest left/right difference, and say in the
+   demo which ones were tried. Sugar → feeding is the safest start (a 2024 whole-brain model
+   predicted it). Check descending-neuron names in the data, not from memory.
+3. Whether lesion mode visibly changes behavior for the chosen pathway.
+4. Whether spherov2 can send heading/speed fast enough over this laptop's Bluetooth.
+5. Whether a team member has an NC State ID (needed to borrow the BOLT).
+6. Mic and speech: which packages (live mic, speech-to-text, laptop voice). Not chosen,
    not installed. Speech-to-text either needs an internet service or a downloaded model.
-6. An LLM for the narrator needs an API key; without one, the narrator uses fill-in-the-blank
+7. An LLM for the narrator needs an API key; without one, the narrator uses fill-in-the-blank
    sentences.
 
 ## Who is editing what

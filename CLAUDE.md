@@ -2,10 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Hackathon project (Hack_NCState x Thinking Machines Hack Day, Sat Nov 14 2026): a simulated
-fruit fly brain is the brain, and a Sphero BOLT robot ball is its body. People talk to it
-through the laptop. Their voice becomes input to the fly's real sense neurons, the fly's
-wiring decides the response, and the ball moves and lights up its 8x8 LED screen.
+Hackathon project (Hack_NCState x Thinking Machines Hack Day, Sat Nov 14 2026): we extract
+real sense → descending-neuron pathways from the fly connectome with the organizers' Colab
+notebook, and those exact synapses drive a Sphero BOLT robot ball. The laptop shows the
+pathway lighting up as it runs. Cutting a neuron in the data ("lesion mode") changes how the
+robot behaves. People can talk to it: their voice picks which sense gets stimulated.
+
+**The pitch:** "We didn't program a robot. We pulled the sound → escape and sugar → approach
+pathways out of the real fly connectome, and those exact synapses drive this ball. Cut a
+synapse in the data, and the robot changes."
 
 This file holds what is stable: mission, rules, architecture, hard constraints. Status
 (what's built, today's plan, open problems) lives in README.md.
@@ -26,6 +31,15 @@ This file holds what is stable: mission, rules, architecture, hard constraints. 
    (describe what the brain did). It never picks the movement, the light, or the reply.
 3. **Show the pathway.** Every reaction should be traceable to which sense neurons fired and
    which descending neurons answered. That is the "Data-Driven Insights" part.
+4. **Change the data, change the robot.** Lesion mode must visibly change behavior. If cutting
+   a pathway changes nothing, say so and pick a different pathway.
+
+How the plan covers each bullet:
+- *Data-Driven Insights:* pathways (hops, synapse counts, middle cell types) are extracted
+  with their notebook and shown live on screen.
+- *Creative Applications:* a robot agent you can talk to, with an LED face.
+- *Rapid Prototyping:* notebook export → loader → sim → ball. A new sense or output neuron
+  is a new selection in the notebook, not new code.
 
 ## Rules
 
@@ -54,7 +68,7 @@ never change the same file at once.
 |---|---|
 | "set up" / "rebuild the environment" | `uv sync` |
 | "run the tests" / "check everything" | `uv run python -m tests.run_tests` |
-| "test the <part>" (brain, motor, senses, screen, sim) | `uv run python -m tests.run_tests brain` |
+| "test the <part>" (brain, pathways, lesion, motor, senses, screen, sim) | `uv run python -m tests.run_tests brain` |
 | "is the ball connected" / "test the ball" | `uv run python -m scripts.test_bolt` |
 | "test the screen" | `uv run python -m scripts.test_matrix` |
 | "test the mic" | `uv run python -m scripts.test_mic` |
@@ -62,6 +76,7 @@ never change the same file at once.
 | "run the backup" / "run the sim" | `uv run python -m pages.sim_page` |
 | "save my progress" | `git add -A` then `git commit -m "<what changed>"` |
 | "share it" / "push" | `git pull --rebase` then `git push` |
+| "show the pathways" | `uv run python -m scripts.list_pathways` (prints each sense → descending path with hops and synapse counts) |
 | "where are we" | read README.md; no command |
 
 Always run from the project folder with `python -m folder.file`, so `pages/` and `scripts/`
@@ -72,12 +87,19 @@ say so instead of improvising a different one.
 ## Architecture (data flow)
 
 ```
-laptop mic → components/mic_listener.py     loudness, pitch, recognized words
-  → components/sense_encoder.py             → input current for sense neurons (hearing,
-                                              taste, vision) — the AI's only job going in
+Colab notebook (organizers') → export neurons + synapses → data/raw/
 data/raw/ → data/connectome_loader.py       load_connectome() → sparse weights + neuron table
-  → components/neuron_groups.py             pick_groups() → sense and descending-neuron indexes
+  → components/neuron_groups.py             pick_groups() → sense and descending-neuron
+                                              indexes; left/right from hemisphere labels
+  → components/pathway_finder.py            find_pathways() → sense → descending paths:
+                                              hops, synapse counts, middle cell types
+  → components/lesion.py                    cut(neurons) → a copy of the weights with
+                                              those synapses removed; restore() undoes it
+laptop mic → components/mic_listener.py     loudness, pitch, recognized words
+  → components/sense_encoder.py             → which sense to stimulate and how hard
+                                              (the AI's only job going in)
   → components/brain_model.py               Brain.step(inputs) → firing rates, ~5–10 steps/s
+  → components/pathway_view.py              draws the pathway diagram, lit by live activity
   → components/motor_map.py                 left vs right descending activity → heading,
                                               total → speed, backward neurons → reverse
   → Body.drive(heading, speed)              bolt_body.py (real ball) or sim_body.py (screen)
@@ -93,6 +115,8 @@ data/raw/ → data/connectome_loader.py       load_connectome() → sparse weigh
   knows which one it drives. `SimBody` draws the 8x8 screen in the window too.
 - Stimulate **senses**, read **descending neurons** (brain → legs). Never stimulate the
   output neurons directly; that skips the brain.
+- Both pages show the pathway diagram next to the ball. Clicking a neuron in the diagram
+  calls `lesion.cut()`; the brain keeps running on the cut copy.
 
 ## What the BOLT can and can't do (from spherov2 0.12.1 source)
 
@@ -134,7 +158,12 @@ Keep `.python-version` pinned to `3.13.18` and `python-preference = "only-manage
 **Always go through these helpers. Never re-implement them inline.**
 - Connectome data only from `data/connectome_loader.py: load_connectome()`.
 - Neuron groups only from `components/neuron_groups.py: pick_groups()`. Never hard-code
-  neuron IDs anywhere else.
+  neuron IDs anywhere else. Left vs right comes from the data's hemisphere labels, never
+  hand-picked.
+- Pathways only from `components/pathway_finder.py: find_pathways()`. Every number shown on
+  screen (hops, synapse counts) comes from it.
+- Lesions only through `components/lesion.py`. It works on a copy; the loaded connectome is
+  never changed.
 - Sense input only from `components/sense_encoder.py`. Speech never reaches the brain any
   other way.
 - Robot motion and the LED screen only through a `Body`. Never call spherov2 outside
@@ -160,8 +189,11 @@ Keep `.python-version` pinned to `3.13.18` and `python-preference = "only-manage
 
 | Path | Job |
 |---|---|
-| `pages/bolt_page.py` | screen: live brain view, mic on, driving the real ball |
+| `pages/bolt_page.py` | screen: pathway diagram + lesion clicks, mic on, driving the real ball |
 | `pages/sim_page.py` | screen: same loop with an on-screen ball and 8x8 screen (backup demo) |
+| `components/pathway_finder.py` | sense → descending-neuron paths: hops, synapses, cell types |
+| `components/lesion.py` | cut and restore neurons on a copy of the weights |
+| `components/pathway_view.py` | draws the pathway diagram lit by live activity (both pages) |
 | `components/body_interface.py` | the `Body` rules every body follows |
 | `components/bolt_body.py` | `BoltBody`: the only file that calls spherov2 |
 | `components/sim_body.py` | `SimBody`: on-screen ball and LED screen |
@@ -178,6 +210,7 @@ Keep `.python-version` pinned to `3.13.18` and `python-preference = "only-manage
 | `scripts/test_bolt.py` | check the ball connects and rolls |
 | `scripts/test_matrix.py` | check the LED screen: pixel, box, character, scrolling word |
 | `scripts/test_mic.py` | check the mic: prints loudness and recognized words |
+| `scripts/list_pathways.py` | print every sense → descending pathway found, for picking the demo ones |
 | `tests/run_tests.py` | runs every test file; plain asserts, stops at the first failure |
 
 `scripts/` is for command-line tools that open no window. `tests/` holds one test file per part.
