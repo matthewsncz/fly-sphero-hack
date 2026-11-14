@@ -3,6 +3,8 @@
 A simulated fruit fly brain drives a Sphero BOLT robot ball in real time, with a 3D-printed
 stick figure riding on a collar around the ball.
 
+Repo: https://github.com/matthewsncz/fly-sphero-hack. To join: `git clone` it, then `uv sync`.
+
 Rules, commands and architecture: [CLAUDE.md](CLAUDE.md). This file is status only.
 Update it whenever something gets built, decided, or blocked.
 
