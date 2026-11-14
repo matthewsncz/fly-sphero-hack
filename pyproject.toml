@@ -1,0 +1,18 @@
+[project]
+name = "fly-sphero-hack"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "bleak>=3.1.0",
+    "manifold3d>=3.5.5",
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "pyarrow>=26.0.1",
+    "pygame>=2.6.1",
+    "scipy>=1.18.1",
+    "spherov2>=0.12.1",
+    "trimesh>=5.2.1",
+]
+
+[tool.uv]
+python-preference = "only-managed"
